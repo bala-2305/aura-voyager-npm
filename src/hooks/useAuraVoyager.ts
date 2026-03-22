@@ -8,6 +8,7 @@ import { AuraVoyagerError } from '../utils/errors';
  */
 export interface UseAuraVoyagerOptions {
   apiKey: string;
+  provider?: 'openai' | 'nvidia' | 'custom';
   apiEndpoint?: string;
   model?: string;
   systemPrompt?: string;
@@ -52,6 +53,7 @@ export function useAuraVoyager(
     try {
       agentRef.current = new AuraVoyager({
         apiKey: options.apiKey,
+        provider: options.provider,
         apiEndpoint: options.apiEndpoint,
         model: options.model,
         systemPrompt: options.systemPrompt
@@ -64,10 +66,10 @@ export function useAuraVoyager(
       setError(error);
       console.error('Failed to initialize AuraVoyager:', error);
     }
-  }, [options.apiKey, options.apiEndpoint, options.model, options.systemPrompt]);
+  }, [options.apiKey, options.provider, options.apiEndpoint, options.model, options.systemPrompt]);
 
   /**
-   * Send message to agent and get response
+   * Send message to agent and get response with streaming
    */
   const sendMessage = useCallback(
     async (message: string) => {
@@ -84,9 +86,33 @@ export function useAuraVoyager(
       setLoading(true);
       setError(null);
 
+      const tempAiId = 'temp_ai_' + Date.now();
+      const tempUserMsg: Message = {
+        id: 'temp_user_' + Date.now(),
+        role: 'user',
+        content: message,
+        timestamp: Date.now()
+      };
+      const tempAiMsg: Message = {
+        id: tempAiId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now()
+      };
+
+      // Optimistically show user message and empty AI message
+      setMessages(prev => [...prev, tempUserMsg, tempAiMsg]);
+
       try {
-        await agentRef.current.ask(message);
-        // Update messages state from agent
+        await agentRef.current.askStream(message, (chunk: string) => {
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === tempAiId ? { ...msg, content: chunk } : msg
+            )
+          );
+        });
+
+        // Update messages state from agent to have real IDs
         setMessages([...agentRef.current.getMessages()]);
       } catch (err) {
         const error =
@@ -97,6 +123,11 @@ export function useAuraVoyager(
               : new Error(String(err));
         setError(error);
         console.error('Error sending message:', error);
+        
+        // Re-sync messages state to remove the temp AI message if it failed
+        if (agentRef.current) {
+           setMessages([...agentRef.current.getMessages()]);
+        }
       } finally {
         setLoading(false);
       }

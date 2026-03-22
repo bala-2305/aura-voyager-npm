@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState, FormEvent, KeyboardEvent } from 'react';
 import { useAuraVoyager, UseAuraVoyagerOptions } from '../hooks/useAuraVoyager';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 import styles from './AuraPopup.module.css';
-
 /**
  * Props for AuraPopup component
  */
@@ -124,7 +127,11 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
               ) : (
                 <span className={styles.avatar}>👤</span>
               )}
-              <p className={styles.messageContent}>{message.content}</p>
+              <div className={styles.messageContent}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}

@@ -34,14 +34,18 @@ export class AuraVoyager {
       );
     }
 
+    const provider = config.provider || 'openai';
+    const isNvidia = provider === 'nvidia';
+
     this.config = {
-      apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+      provider,
+      apiEndpoint: isNvidia ? 'https://integrate.api.nvidia.com/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions',
       maxRetries: 3,
       retryDelay: 1000,
       timeout: 30000,
       systemPrompt:
         'You are a helpful, harmless, and honest AI assistant. Provide clear and concise responses.',
-      model: 'gpt-3.5-turbo',
+      model: isNvidia ? 'meta/llama3-70b-instruct' : 'gpt-3.5-turbo',
       ...config
     };
 
@@ -120,6 +124,67 @@ export class AuraVoyager {
       this.memoryManager.addMessage(aiMessage);
 
       return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Send a message and stream the AI response chunks
+   * @param prompt User message/prompt
+   * @param onChunk Callback called with the growing full response string
+   * @returns Promise resolving to the final complete response
+   */
+  async askStream(prompt: string, onChunk: (text: string) => void): Promise<string> {
+    if (!prompt.trim()) {
+      throw new AuraVoyagerError(
+        ErrorCodes.INVALID_REQUEST,
+        'Prompt cannot be empty'
+      );
+    }
+
+    // Add user message to memory
+    const userMessage: Message = {
+      id: this.generateMessageId(),
+      role: 'user',
+      content: prompt,
+      timestamp: Date.now()
+    };
+    this.memoryManager.addMessage(userMessage);
+
+    try {
+      // Get system message with context
+      const systemMessage = this.memoryManager.buildSystemMessage() ||
+        this.config.systemPrompt ||
+        'You are a helpful AI assistant.';
+
+      let finalResponse: string;
+
+      // Use mock API if key is 'mock'
+      if (this.config.apiKey === 'mock') {
+         finalResponse = await APIClient.mockResponse(prompt, onChunk);
+      } else {
+        const messages = this.memoryManager.getMessages();
+        // The messages array still includes the last user message added above
+        // Exclude system message from getMessages if any? MemoryManager already does not return system.
+        finalResponse = await this.apiClient.streamMessage(
+          messages,
+          systemMessage,
+          this.config.model,
+          onChunk
+        );
+      }
+
+      // Add AI response to memory
+      const aiMessage: Message = {
+        id: this.generateMessageId(),
+        role: 'assistant',
+        content: finalResponse,
+        timestamp: Date.now()
+      };
+      this.memoryManager.addMessage(aiMessage);
+
+      return finalResponse;
     } catch (error) {
       throw error;
     }

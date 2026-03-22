@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState, FormEvent, KeyboardEvent } from 'react';
 import { useAuraVoyager, UseAuraVoyagerOptions } from '../hooks/useAuraVoyager';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 import styles from './AuraChat.module.css';
-
 /**
  * Theme options for AuraChat component
  */
@@ -128,7 +131,11 @@ export const AuraChat: React.FC<AuraChatProps> = ({
               ) : (
                 <span className={styles.avatar}>👤</span>
               )}
-              <p className={styles.messageContent}>{message.content}</p>
+              <div className={styles.messageContent}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
             <span className={styles.timestamp}>
               {new Date(message.timestamp).toLocaleTimeString([], {

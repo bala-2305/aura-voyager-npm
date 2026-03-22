@@ -18,6 +18,7 @@ export interface Message {
  */
 export interface AuraVoyagerConfig {
   apiKey: string;
+  provider?: 'openai' | 'nvidia' | 'custom';
   apiEndpoint?: string;
   maxRetries?: number;
   retryDelay?: number;
