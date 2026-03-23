@@ -289,9 +289,9 @@ MIT
 
 ## Support
 
-- Documentation: https://github.com/yourusername/aura-voyager
-- Issues: https://github.com/yourusername/aura-voyager/issues
-- Discussions: https://github.com/yourusername/aura-voyager/discussions
+- Documentation: https://github.com/bala-2305/aura-voyager-npm
+- Issues: https://github.com/bala-2305/aura-voyager-npm/issues
+- Discussions: https://github.com/bala-2305/aura-voyager-npm/discussions
 
 ---
 
