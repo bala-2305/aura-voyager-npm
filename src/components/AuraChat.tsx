@@ -4,6 +4,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Loader2, 
+  RotateCcw, 
+  Sparkles
+} from 'lucide-react';
 import styles from './AuraChat.module.css';
 /**
  * Theme options for AuraChat component
@@ -90,7 +98,10 @@ export const AuraChat: React.FC<AuraChatProps> = ({
   };
 
   return (
-    <div className={`${styles.container} ${styles[`theme-${theme}`]}`}>
+    <div 
+      className={`aura-chat ${styles.container} ${styles[`theme-${theme}`]}`}
+      data-aura-chat="true"
+    >
       {/* Header */}
       <div className={styles.header}>
         <h2 className={styles.title}>Aura Voyager</h2>
@@ -100,7 +111,7 @@ export const AuraChat: React.FC<AuraChatProps> = ({
           title="Clear chat history"
           aria-label="Clear chat"
         >
-          ✕
+          <RotateCcw size={18} />
         </button>
       </div>
 
@@ -108,8 +119,11 @@ export const AuraChat: React.FC<AuraChatProps> = ({
       <div className={styles.messagesContainer}>
         {messages.length === 0 && !error && (
           <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <Sparkles size={48} className={styles.sparkleIcon} />
+            </div>
             <p className={styles.emptyText}>
-              👋 Start a conversation with Aura Voyager
+              Start a conversation with Aura Voyager
             </p>
           </div>
         )}
@@ -123,13 +137,18 @@ export const AuraChat: React.FC<AuraChatProps> = ({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`${styles.message} ${styles[`role-${message.role}`]}`}
+            className={`aura-message ${styles.message} ${styles[`role-${message.role}`]}`}
+            data-role={message.role}
           >
             <div className={styles.messageBubble}>
               {message.role === 'assistant' ? (
-                <span className={styles.avatar}>🤖</span>
+                <span className={styles.avatar}>
+                  <Bot size={20} />
+                </span>
               ) : (
-                <span className={styles.avatar}>👤</span>
+                <span className={styles.avatar}>
+                  <User size={20} />
+                </span>
               )}
               <div className={styles.messageContent}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
@@ -147,9 +166,11 @@ export const AuraChat: React.FC<AuraChatProps> = ({
         ))}
 
         {loading && showTypingAnimation && (
-          <div className={`${styles.message} ${styles['role-assistant']}`}>
+          <div className={`aura-message aura-typing ${styles.message} ${styles['role-assistant']}`}>
             <div className={styles.messageBubble}>
-              <span className={styles.avatar}>🤖</span>
+              <span className={styles.avatar}>
+                <Bot size={20} />
+              </span>
               <div className={styles.typingAnimation}>
                 <span></span>
                 <span></span>
@@ -163,7 +184,10 @@ export const AuraChat: React.FC<AuraChatProps> = ({
       </div>
 
       {/* Input */}
-      <form className={styles.inputForm} onSubmit={handleSendMessage}>
+      <form 
+        className={`aura-input-form ${styles.inputForm}`} 
+        onSubmit={handleSendMessage}
+      >
         <input
           type="text"
           value={input}
@@ -180,7 +204,11 @@ export const AuraChat: React.FC<AuraChatProps> = ({
           className={styles.sendBtn}
           aria-label="Send message"
         >
-          {loading ? '⏳' : '➤'}
+          {loading ? (
+            <Loader2 size={18} className={styles.spin} />
+          ) : (
+            <Send size={18} />
+          )}
         </button>
       </form>
     </div>

@@ -4,6 +4,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Loader2, 
+  MessageSquare, 
+  RotateCcw, 
+  Sparkles,
+  X
+} from 'lucide-react';
 import styles from './AuraPopup.module.css';
 /**
  * Props for AuraPopup component
@@ -76,10 +86,16 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
   };
 
   return (
-    <div className={`${styles.popup} ${styles[`position-${position}`]} ${styles[`theme-${theme}`]}`}>
+    <div 
+      className={`aura-popup ${styles.popup} ${styles[`position-${position}`]} ${styles[`theme-${theme}`]}`}
+      data-aura-popup="true"
+    >
       {/* Header */}
       <div className={styles.header}>
-        <h3 className={styles.title}>💬 Aura Voyager</h3>
+        <h3 className={styles.title}>
+          <MessageSquare size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          Aura Voyager
+        </h3>
         <div className={styles.headerActions}>
           <button
             className={styles.clearBtn}
@@ -87,7 +103,7 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
             title="Clear chat"
             aria-label="Clear chat"
           >
-            🔄
+            <RotateCcw size={16} />
           </button>
           <button
             className={styles.closeBtn}
@@ -95,7 +111,7 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
             title="Close chat"
             aria-label="Close chat"
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
       </div>
@@ -104,8 +120,11 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
       <div className={styles.messagesContainer}>
         {messages.length === 0 && !error && (
           <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <Sparkles size={40} className={styles.sparkleIcon} />
+            </div>
             <p className={styles.emptyText}>
-              👋 Start chatting!
+              Start chatting!
             </p>
           </div>
         )}
@@ -119,13 +138,18 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`${styles.message} ${styles[`role-${message.role}`]}`}
+            className={`aura-message ${styles.message} ${styles[`role-${message.role}`]}`}
+            data-role={message.role}
           >
             <div className={styles.messageBubble}>
               {message.role === 'assistant' ? (
-                <span className={styles.avatar}>🤖</span>
+                <span className={styles.avatar}>
+                  <Bot size={18} />
+                </span>
               ) : (
-                <span className={styles.avatar}>👤</span>
+                <span className={styles.avatar}>
+                  <User size={18} />
+                </span>
               )}
               <div className={styles.messageContent}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
@@ -137,9 +161,11 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
         ))}
 
         {loading && showTypingAnimation && (
-          <div className={`${styles.message} ${styles['role-assistant']}`}>
+          <div className={`aura-message aura-typing ${styles.message} ${styles['role-assistant']}`}>
             <div className={styles.messageBubble}>
-              <span className={styles.avatar}>🤖</span>
+              <span className={styles.avatar}>
+                <Bot size={18} />
+              </span>
               <div className={styles.typingAnimation}>
                 <span></span>
                 <span></span>
@@ -153,7 +179,10 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
       </div>
 
       {/* Input */}
-      <form className={styles.inputForm} onSubmit={handleSendMessage}>
+      <form 
+        className={`aura-input-form ${styles.inputForm}`} 
+        onSubmit={handleSendMessage}
+      >
         <input
           type="text"
           value={input}
@@ -170,7 +199,11 @@ export const AuraPopup: React.FC<AuraPopupProps> = ({
           className={styles.sendBtn}
           aria-label="Send message"
         >
-          {loading ? '⏳' : '➤'}
+          {loading ? (
+            <Loader2 size={16} className={styles.spin} />
+          ) : (
+            <Send size={16} />
+          )}
         </button>
       </form>
     </div>

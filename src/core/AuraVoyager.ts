@@ -162,7 +162,7 @@ export class AuraVoyager {
 
       // Use mock API if key is 'mock'
       if (this.config.apiKey === 'mock') {
-         finalResponse = await APIClient.mockResponse(prompt, onChunk);
+        finalResponse = await APIClient.mockResponse(prompt, onChunk);
       } else {
         const messages = this.memoryManager.getMessages();
         // The messages array still includes the last user message added above

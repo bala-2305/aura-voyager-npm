@@ -123,10 +123,10 @@ export function useAuraVoyager(
               : new Error(String(err));
         setError(error);
         console.error('Error sending message:', error);
-        
+
         // Re-sync messages state to remove the temp AI message if it failed
         if (agentRef.current) {
-           setMessages([...agentRef.current.getMessages()]);
+          setMessages([...agentRef.current.getMessages()]);
         }
       } finally {
         setLoading(false);
