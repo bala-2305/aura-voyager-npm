@@ -1,6 +1,6 @@
 {
   "name": "aura-voyager",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A production-ready AI agent SDK for React applications with plug-and-play chat UI and intelligent interaction layer",
   "main": "dist/index.js",
   "module": "dist/index.es",
@@ -37,6 +37,8 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
     "@types/react": "^18.2.0 || ^19.0.0",
     "@types/react-dom": "^18.2.0 || ^19.0.0",
     "@vitejs/plugin-react": "^4.0.0",
@@ -46,9 +48,9 @@
   },
   "dependencies": {
     "highlight.js": "^11.11.1",
-    "lucide-react": "^1.0.1",
-    "react-markdown": "^10.1.0",
+    "lucide-react": "^0.477.0",
+    "react-markdown": "^9.0.0",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1"
   }
-}
+}

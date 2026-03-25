@@ -19,14 +19,28 @@ export default defineConfig({
       fileName: (format) => `index.${format === 'es' ? 'es' : 'js'}`
     },
     rollupOptions: {
-      external: ['react', 'react-dom'],
+      external: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'lucide-react',
+        'react-markdown',
+        'rehype-highlight',
+        'remark-gfm'
+      ],
       output: {
         globals: {
           react: 'React',
-          'react-dom': 'ReactDOM'
+          'react-dom': 'ReactDOM',
+          'react/jsx-runtime': 'jsxRuntime',
+          'lucide-react': 'LucideReact',
+          'react-markdown': 'ReactMarkdown',
+          'rehype-highlight': 'rehypeHighlight',
+          'remark-gfm': 'remarkGfm'
         }
       }
     },
+
     sourcemap: true
   }
 });
