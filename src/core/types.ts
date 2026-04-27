@@ -18,13 +18,15 @@ export interface Message {
  */
 export interface AuraVoyagerConfig {
   apiKey: string;
-  provider?: 'openai' | 'nvidia' | 'custom';
+  provider?: 'openai' | 'anthropic' | 'gemini' | 'groq' | 'cohere' | 'nvidia' | 'custom' | 'mock';
   apiEndpoint?: string;
   maxRetries?: number;
   retryDelay?: number;
   timeout?: number;
   systemPrompt?: string;
   model?: string;
+  persist?: boolean;
+  storageKey?: string;
 }
 
 /**
@@ -34,6 +36,8 @@ export interface MemoryConfig {
   enabled: boolean;
   maxMessages?: number;
   persistToLocalStorage?: boolean;
+  storageKey?: string;
+  systemPrompt?: string;
 }
 
 /**

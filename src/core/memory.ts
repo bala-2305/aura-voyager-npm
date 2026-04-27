@@ -6,6 +6,7 @@ import { Message, MemoryConfig } from './types';
 export class MemoryManager {
   private messages: Message[] = [];
   private context: string = '';
+  private systemPrompt: string = '';
   private enabled: boolean = true;
   private maxMessages: number = 100;
   private persistToLocalStorage: boolean = false;
@@ -15,6 +16,11 @@ export class MemoryManager {
     this.enabled = config.enabled;
     this.maxMessages = config.maxMessages || 100;
     this.persistToLocalStorage = config.persistToLocalStorage || false;
+    this.systemPrompt = config.systemPrompt || '';
+
+    if (config.storageKey) {
+      this.storageKey = config.storageKey;
+    }
 
     if (this.persistToLocalStorage && typeof window !== 'undefined') {
       this.loadFromLocalStorage();
@@ -29,9 +35,11 @@ export class MemoryManager {
 
     this.messages.push(message);
 
-    // Maintain max message limit
+    // Keep the most recent messages, always preserving pairs (user/assistant)
     if (this.messages.length > this.maxMessages) {
-      this.messages = this.messages.slice(-this.maxMessages);
+      // Trim from the front, keeping an even number to preserve conversation pairs
+      const excess = this.messages.length - this.maxMessages;
+      this.messages = this.messages.slice(excess);
     }
 
     if (this.persistToLocalStorage) {
@@ -47,28 +55,36 @@ export class MemoryManager {
   }
 
   /**
-   * Get messages with limit
+   * Get most recent N messages
    */
   getRecentMessages(limit: number = 10): Message[] {
     return this.messages.slice(-limit);
   }
 
   /**
-   * Get context
+   * Get context string
    */
   getContext(): string {
     return this.context;
   }
 
   /**
-   * Set context
+   * Set context string
    */
   setContext(context: string): void {
     this.context = context;
+    if (this.persistToLocalStorage) this.saveToLocalStorage();
   }
 
   /**
-   * Clear all messages
+   * Set system prompt
+   */
+  setSystemPrompt(prompt: string): void {
+    this.systemPrompt = prompt;
+  }
+
+  /**
+   * Clear all messages and context
    */
   clear(): void {
     this.messages = [];
@@ -80,7 +96,7 @@ export class MemoryManager {
   }
 
   /**
-   * Enable/disable memory
+   * Enable or disable memory
    */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
@@ -104,16 +120,15 @@ export class MemoryManager {
   }
 
   /**
-   * Build system message for API calls
+   * Build system message for API calls, merging systemPrompt + context
    */
   buildSystemMessage(): string {
-    let system = 'You are a helpful AI assistant.';
-
+    // Config systemPrompt takes precedence as the base, then context appended
+    const base = this.systemPrompt || 'You are a helpful, harmless, and honest AI assistant.';
     if (this.context) {
-      system += `\n\nContext: ${this.context}`;
+      return `${base}\n\nContext: ${this.context}`;
     }
-
-    return system;
+    return base;
   }
 
   /**
@@ -121,7 +136,6 @@ export class MemoryManager {
    */
   private saveToLocalStorage(): void {
     if (typeof window === 'undefined') return;
-
     try {
       const data = {
         messages: this.messages,
@@ -129,8 +143,8 @@ export class MemoryManager {
         timestamp: Date.now()
       };
       localStorage.setItem(this.storageKey, JSON.stringify(data));
-    } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+    } catch {
+      console.warn('[AuraVoyager] Failed to save chat to localStorage');
     }
   }
 
@@ -139,16 +153,15 @@ export class MemoryManager {
    */
   private loadFromLocalStorage(): void {
     if (typeof window === 'undefined') return;
-
     try {
-      const data = localStorage.getItem(this.storageKey);
-      if (data) {
-        const parsed = JSON.parse(data);
+      const raw = localStorage.getItem(this.storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
         this.messages = parsed.messages || [];
         this.context = parsed.context || '';
       }
-    } catch (error) {
-      console.warn('Failed to load from localStorage:', error);
+    } catch {
+      console.warn('[AuraVoyager] Failed to load chat from localStorage');
     }
   }
 }

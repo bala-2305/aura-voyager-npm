@@ -1,50 +1,43 @@
-import React, { useEffect, useRef, useState, FormEvent, KeyboardEvent } from 'react';
+import React, { useEffect, useRef, useState, FormEvent, KeyboardEvent, useCallback } from 'react';
 import { useAuraVoyager, UseAuraVoyagerOptions } from '../hooks/useAuraVoyager';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Loader2, 
-  RotateCcw, 
-  Sparkles
+import {
+  Send,
+  Bot,
+  User,
+  RotateCcw,
+  Sparkles,
+  Square,
+  Copy,
+  Check
 } from 'lucide-react';
 import styles from './AuraChat.module.css';
-/**
- * Theme options for AuraChat component
- */
 
 export type Theme = 'light' | 'dark';
 
-/**
- * Props for AuraChat component
- */
 export interface AuraChatProps extends UseAuraVoyagerOptions {
   theme?: Theme;
   placeholder?: string;
   showTypingAnimation?: boolean;
+  title?: string;
   onMessageSent?: (message: string) => void;
+  onError?: (error: Error) => void;
+  initialMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 /**
  * AuraChat - Complete chat UI component for React
- * @param props Component configuration and options
- * @returns React component
- * @example
- * <AuraChat
- *   apiKey="sk-..."
- *   theme="dark"
- *   placeholder="Ask me anything..."
- * />
  */
 export const AuraChat: React.FC<AuraChatProps> = ({
   theme = 'light',
   placeholder = 'Type your message...',
   showTypingAnimation = true,
+  title = 'Aura Voyager',
   onMessageSent,
+  onError,
   ...auraOptions
 }) => {
   const {
@@ -52,66 +45,74 @@ export const AuraChat: React.FC<AuraChatProps> = ({
     loading,
     error,
     sendMessage,
+    stopGeneration,
     clearMessages
   } = useAuraVoyager(auraOptions);
 
   const [input, setInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  /**
-   * Handle message submission
-   */
-  
-  const handleSendMessage = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Notify parent of errors
+  useEffect(() => {
+    if (error && onError) onError(error);
+  }, [error, onError]);
 
+  // Auto-grow textarea
+  const adjustTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, []);
+
+  const handleSend = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!input.trim() || loading) return;
-
-    const messageText = input;
+    const text = input;
     setInput('');
-
-    onMessageSent?.(messageText);
-    await sendMessage(messageText);
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    onMessageSent?.(text);
+    await sendMessage(text);
   };
 
-  /**
-   * Handle Enter key press
-   */
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage(e as any);
+      handleSend();
     }
   };
 
-  /**
-   * Handle clear chat
-   */
-  const handleClearChat = () => {
-    clearMessages();
-    setInput('');
+  const handleCopy = async (id: string, content: string) => {
+    await navigator.clipboard.writeText(content);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
-    <div 
+    <div
       className={`aura-chat ${styles.container} ${styles[`theme-${theme}`]}`}
       data-aura-chat="true"
     >
       {/* Header */}
       <div className={styles.header}>
-        <h2 className={styles.title}>Aura Voyager</h2>
+        <div className={styles.headerLeft}>
+          <Bot size={18} className={styles.headerIcon} />
+          <h2 className={styles.title}>{title}</h2>
+        </div>
         <button
           className={styles.clearBtn}
-          onClick={handleClearChat}
+          onClick={clearMessages}
           title="Clear chat history"
           aria-label="Clear chat"
         >
-          <RotateCcw size={18} />
+          <RotateCcw size={16} />
         </button>
       </div>
 
@@ -122,9 +123,7 @@ export const AuraChat: React.FC<AuraChatProps> = ({
             <div className={styles.emptyIcon}>
               <Sparkles size={48} className={styles.sparkleIcon} />
             </div>
-            <p className={styles.emptyText}>
-              Start a conversation with Aura Voyager
-            </p>
+            <p className={styles.emptyText}>Start a conversation</p>
           </div>
         )}
 
@@ -141,26 +140,27 @@ export const AuraChat: React.FC<AuraChatProps> = ({
             data-role={message.role}
           >
             <div className={styles.messageBubble}>
-              {message.role === 'assistant' ? (
-                <span className={styles.avatar}>
-                  <Bot size={20} />
-                </span>
-              ) : (
-                <span className={styles.avatar}>
-                  <User size={20} />
-                </span>
-              )}
+              <span className={styles.avatar}>
+                {message.role === 'assistant' ? <Bot size={18} /> : <User size={18} />}
+              </span>
               <div className={styles.messageContent}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                   {message.content}
                 </ReactMarkdown>
               </div>
+              {message.role === 'assistant' && message.content && (
+                <button
+                  className={styles.copyBtn}
+                  onClick={() => handleCopy(message.id, message.content)}
+                  title="Copy to clipboard"
+                  aria-label="Copy message"
+                >
+                  {copiedId === message.id ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              )}
             </div>
             <span className={styles.timestamp}>
-              {new Date(message.timestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         ))}
@@ -168,13 +168,9 @@ export const AuraChat: React.FC<AuraChatProps> = ({
         {loading && showTypingAnimation && (
           <div className={`aura-message aura-typing ${styles.message} ${styles['role-assistant']}`}>
             <div className={styles.messageBubble}>
-              <span className={styles.avatar}>
-                <Bot size={20} />
-              </span>
+              <span className={styles.avatar}><Bot size={18} /></span>
               <div className={styles.typingAnimation}>
-                <span></span>
-                <span></span>
-                <span></span>
+                <span /><span /><span />
               </div>
             </div>
           </div>
@@ -184,32 +180,38 @@ export const AuraChat: React.FC<AuraChatProps> = ({
       </div>
 
       {/* Input */}
-      <form 
-        className={`aura-input-form ${styles.inputForm}`} 
-        onSubmit={handleSendMessage}
-      >
-        <input
-          type="text"
+      <form className={`aura-input-form ${styles.inputForm}`} onSubmit={handleSend}>
+        <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => { setInput(e.target.value); adjustTextarea(); }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={loading}
+          rows={1}
           className={styles.input}
           aria-label="Message input"
         />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          className={styles.sendBtn}
-          aria-label="Send message"
-        >
-          {loading ? (
-            <Loader2 size={18} className={styles.spin} />
-          ) : (
-            <Send size={18} />
-          )}
-        </button>
+        {loading ? (
+          <button
+            type="button"
+            onClick={stopGeneration}
+            className={`${styles.sendBtn} ${styles.stopBtn}`}
+            aria-label="Stop generation"
+            title="Stop generation"
+          >
+            <Square size={16} />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className={styles.sendBtn}
+            aria-label="Send message"
+          >
+            <Send size={16} />
+          </button>
+        )}
       </form>
     </div>
   );

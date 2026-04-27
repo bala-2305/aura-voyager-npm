@@ -8,10 +8,12 @@ import { AuraVoyagerError } from '../utils/errors';
  */
 export interface UseAuraVoyagerOptions {
   apiKey: string;
-  provider?: 'openai' | 'nvidia' | 'custom';
+  provider?: 'openai' | 'anthropic' | 'gemini' | 'groq' | 'cohere' | 'nvidia' | 'custom' | 'mock';
   apiEndpoint?: string;
   model?: string;
   systemPrompt?: string;
+  persist?: boolean;
+  storageKey?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export interface UseAuraVoyagerReturn {
   loading: boolean;
   error: Error | null;
   sendMessage: (message: string) => Promise<void>;
+  stopGeneration: () => void;
   clearMessages: () => void;
   setContext: (context: string) => void;
   setMemory: (enabled: boolean) => void;
@@ -29,139 +32,133 @@ export interface UseAuraVoyagerReturn {
 
 /**
  * React hook for integrating Aura Voyager into components
- * @param options Configuration options with apiKey
- * @returns Hook interface with messages, loading state, and methods
- * @example
- * const {
- *   messages,
- *   loading,
- *   error,
- *   sendMessage,
- *   clearMessages
- * } = useAuraVoyager({ apiKey: 'sk-...' });
  */
-export function useAuraVoyager(
-  options: UseAuraVoyagerOptions
-): UseAuraVoyagerReturn {
+export function useAuraVoyager(options: UseAuraVoyagerOptions): UseAuraVoyagerReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // Stable ref — never triggers re-initialization on parent re-renders
   const agentRef = useRef<AuraVoyager | null>(null);
 
-  // Initialize agent on mount
+  // Track a stable key for when the agent truly needs to be replaced
+  const configKey = `${options.apiKey}::${options.provider}::${options.apiEndpoint}::${options.model}::${options.storageKey}`;
+  const prevKeyRef = useRef<string>('');
+
   useEffect(() => {
+    if (prevKeyRef.current === configKey && agentRef.current) return;
+    prevKeyRef.current = configKey;
+
     try {
       agentRef.current = new AuraVoyager({
         apiKey: options.apiKey,
         provider: options.provider,
         apiEndpoint: options.apiEndpoint,
         model: options.model,
-        systemPrompt: options.systemPrompt
+        systemPrompt: options.systemPrompt,
+        persist: options.persist,
+        storageKey: options.storageKey
       });
-
-      // Sync initial messages from agent
+      // Restore persisted messages on mount
       setMessages(agentRef.current.getMessages());
+      setError(null);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      console.error('Failed to initialize AuraVoyager:', error);
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      console.error('[AuraVoyager] Failed to initialize:', e.message);
     }
-  }, [options.apiKey, options.provider, options.apiEndpoint, options.model, options.systemPrompt]);
+  // Only reinitialize when the identity-defining config changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configKey]);
+
+  // Keep systemPrompt updated without reinitializing the agent
+  useEffect(() => {
+    if (agentRef.current && options.systemPrompt !== undefined) {
+      agentRef.current.setSystemPrompt(options.systemPrompt);
+    }
+  }, [options.systemPrompt]);
 
   /**
    * Send message to agent and get response with streaming
    */
-  const sendMessage = useCallback(
-    async (message: string) => {
-      if (!agentRef.current) {
-        setError(new Error('Agent not initialized'));
-        return;
-      }
+  const sendMessage = useCallback(async (message: string) => {
+    const agent = agentRef.current;
+    if (!agent) {
+      setError(new Error('Agent not initialized'));
+      return;
+    }
+    if (!message.trim()) {
+      setError(new Error('Message cannot be empty'));
+      return;
+    }
 
-      if (!message.trim()) {
-        setError(new Error('Message cannot be empty'));
-        return;
-      }
+    setLoading(true);
+    setError(null);
 
-      setLoading(true);
-      setError(null);
+    // Use a unique ID with a high-resolution timestamp + random to avoid collisions
+    const tempAiId = `temp_ai_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const tempUserMsg: Message = {
+      id: `temp_user_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      role: 'user',
+      content: message,
+      timestamp: Date.now()
+    };
+    const tempAiMsg: Message = {
+      id: tempAiId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now()
+    };
 
-      const tempAiId = 'temp_ai_' + Date.now();
-      const tempUserMsg: Message = {
-        id: 'temp_user_' + Date.now(),
-        role: 'user',
-        content: message,
-        timestamp: Date.now()
-      };
-      const tempAiMsg: Message = {
-        id: tempAiId,
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now()
-      };
+    setMessages(prev => [...prev, tempUserMsg, tempAiMsg]);
 
-      // Optimistically show user message and empty AI message
-      setMessages(prev => [...prev, tempUserMsg, tempAiMsg]);
+    try {
+      await agent.askStream(message, (chunk: string) => {
+        setMessages(prev =>
+          prev.map(msg => msg.id === tempAiId ? { ...msg, content: chunk } : msg)
+        );
+      });
+      // Sync final messages (with real IDs from the agent's memory)
+      setMessages([...agent.getMessages()]);
+    } catch (err) {
+      const e = err instanceof AuraVoyagerError ? err : err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      // Remove the failed optimistic AI message, keep the user message
+      setMessages(prev => prev.filter(m => m.id !== tempAiId));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      try {
-        await agentRef.current.askStream(message, (chunk: string) => {
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.id === tempAiId ? { ...msg, content: chunk } : msg
-            )
-          );
-        });
-
-        // Update messages state from agent to have real IDs
-        setMessages([...agentRef.current.getMessages()]);
-      } catch (err) {
-        const error =
-          err instanceof AuraVoyagerError
-            ? err
-            : err instanceof Error
-              ? err
-              : new Error(String(err));
-        setError(error);
-        console.error('Error sending message:', error);
-
-        // Re-sync messages state to remove the temp AI message if it failed
-        if (agentRef.current) {
-          setMessages([...agentRef.current.getMessages()]);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  /**
+   * Abort the currently streaming response
+   */
+  const stopGeneration = useCallback(() => {
+    agentRef.current?.abort();
+    setLoading(false);
+  }, []);
 
   /**
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
-    if (agentRef.current) {
-      agentRef.current.clearHistory();
-      setMessages([]);
-      setError(null);
-    }
+    agentRef.current?.clearHistory();
+    setMessages([]);
+    setError(null);
   }, []);
 
   /**
    * Set conversation context
    */
   const setContextFn = useCallback((context: string) => {
-    if (agentRef.current) {
-      agentRef.current.setContext(context);
-    }
+    agentRef.current?.setContext(context);
   }, []);
 
   /**
    * Enable/disable memory
    */
   const setMemoryFn = useCallback((enabled: boolean) => {
-    if (agentRef.current) {
-      agentRef.current.setMemory(enabled);
-    }
+    agentRef.current?.setMemory(enabled);
   }, []);
 
   return {
@@ -169,6 +166,7 @@ export function useAuraVoyager(
     loading,
     error,
     sendMessage,
+    stopGeneration,
     clearMessages,
     setContext: setContextFn,
     setMemory: setMemoryFn

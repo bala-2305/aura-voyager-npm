@@ -24,6 +24,8 @@ export { AuraChat } from './components/AuraChat';
 export type { AuraChatProps, Theme } from './components/AuraChat';
 export { AuraPopup } from './components/AuraPopup';
 export type { AuraPopupProps } from './components/AuraPopup';
+export { AuraFeedback } from './components/AuraFeedback';
+export type { AuraFeedbackProps, FeedbackSubmission } from './components/AuraFeedback';
 
 // Utility exports
 export { AuraVoyagerError, ErrorCodes, getErrorMessage } from './utils/errors';

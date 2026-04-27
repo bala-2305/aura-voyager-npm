@@ -1,7 +1,7 @@
 {
   "name": "aura-voyager",
-  "version": "1.0.5",
-  "description": "A production-ready AI agent SDK for React applications with plug-and-play chat UI and intelligent interaction layer",
+  "version": "1.0.6",
+  "description": "Unified multi-provider AI SDK for Node.js — One API for OpenAI, Anthropic, Gemini, Groq, and more",
   "main": "dist/index.js",
   "module": "dist/index.es",
   "types": "dist/index.d.ts",
@@ -20,6 +20,7 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run type-check",
     "example": "cd examples/react-demo && npm run dev"
   },
   "keywords": [
@@ -30,11 +31,15 @@
     "sdk",
     "typescript"
   ],
-  "author": "Your Name",
+  "author": "Bala",
   "license": "MIT",
+  "sideEffects": ["**/*.css"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "react": "^18.0.0 || ^19.0.0",

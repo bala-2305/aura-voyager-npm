@@ -6,6 +6,7 @@ A production-ready AI agent SDK for React applications with plug-and-play chat U
 
 - **Plug-and-Play Chat UI**: Beautiful, modern chat component ready to use.
 - **Floating Popup Widget**: Drop-in popup chat for instant integration.
+- **Feedback Collection**: Built-in feedback component to gather user insights on response quality.
 - **AI Integration**: OpenAI and NVIDIA NIM compatible API with a native mock mode for development.
 - **Streaming Responses**: Real-time server-sent events (SSE) support for progressive text rendering.
 - **Markdown & Syntax Highlighting**: Native support for Markdown formatting and code block highlighting via `react-markdown` and `highlight.js`.
@@ -120,6 +121,42 @@ export default function App() {
 ```
 *Explanation*: The `<AuraPopup />` widget provides a floating, persistent chat icon that toggles standard chat functionalities. It incorporates the exact same attributes as the `AuraChat` component but confines the UI styling to an absolutely positioned overlay container.
 
+### Collecting User Feedback
+
+```tsx
+import { AuraFeedback } from 'aura-voyager';
+import { useAuraVoyager } from 'aura-voyager';
+
+export default function App() {
+  const { messages, sendMessage } = useAuraVoyager({
+    apiKey: 'sk-your-api-key'
+  });
+
+  const handleFeedbackSubmit = async (feedback) => {
+    // Send feedback to your backend
+    await fetch('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(feedback)
+    });
+  };
+
+  return (
+    <>
+      {/* Your chat component */}
+      <AuraChat {...} />
+      
+      {/* Feedback collection */}
+      <AuraFeedback 
+        messages={messages}
+        onSubmitFeedback={handleFeedbackSubmit}
+        theme="dark"
+      />
+    </>
+  );
+}
+```
+*Explanation*: The `<AuraFeedback />` component captures user satisfaction ratings, optional comments, and email addresses. It integrates seamlessly with your chat interface, allowing you to gather insights on response quality and improve your AI models over time.
+
 ### Using the Core SDK
 
 ```typescript
@@ -212,6 +249,27 @@ interface AuraPopupProps extends AuraChatProps {
 ```
 *Explanation*: Built on top of `AuraChatProps`, the popup attributes structure introduces additional specific layout definitions, assigning constraints like edge `position` and establishing the `onClose` callback hooks.
 
+### AuraFeedback
+
+Feedback collection component for gathering user insights on response quality.
+
+```typescript
+interface AuraFeedbackProps {
+  messages?: Message[];                              // Chat messages context for feedback
+  onSubmitFeedback?: (feedback: FeedbackSubmission) => Promise<void>; // Callback when feedback submitted
+  theme?: 'light' | 'dark';                          // UI theme (default: 'light')
+}
+
+interface FeedbackSubmission {
+  rating: 'positive' | 'negative';                   // User satisfaction rating
+  comment?: string;                                  // Optional feedback comment
+  email?: string;                                    // Optional user email
+  messages?: Message[];                              // Associated conversation
+  timestamp: number;                                 // Submission timestamp
+}
+```
+*Explanation*: The `AuraFeedback` component enables users to rate responses, provide comments, and share contact information. It's designed for integration with existing chat interfaces to capture quality metrics and user sentiment data for continuous improvement.
+
 ## Hook API
 
 ### useAuraVoyager
@@ -241,7 +299,9 @@ import type {
   UseAuraVoyagerOptions, // Hook configuration options
   UseAuraVoyagerReturn, // Hook return signature
   AuraChatProps,        // Chat component properties
-  AuraPopupProps        // Popup component properties
+  AuraPopupProps,       // Popup component properties
+  AuraFeedbackProps,    // Feedback component properties
+  FeedbackSubmission    // Feedback submission structure
 } from 'aura-voyager';
 ```
 *Explanation*: Importable TypeScript interfaces allow type-safe validation enforcing standard shapes. Enforcing strict schema guidelines ensures reliable API interaction mappings over unpredictable request objects.

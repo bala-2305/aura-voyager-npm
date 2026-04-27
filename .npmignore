@@ -3,3 +3,7 @@ examples/
 tsconfig.json
 vite.config.ts
 CHANGELOG.md
+*.map
+.git/
+.gitignore
+important.txt
