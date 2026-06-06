@@ -16,7 +16,8 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'AuraVoyager',
-      fileName: (format) => `index.${format === 'es' ? 'es' : 'js'}`
+      formats: ['es', 'umd'],
+      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'umd.js'}`
     },
     rollupOptions: {
       external: [
@@ -29,6 +30,7 @@ export default defineConfig({
         'remark-gfm'
       ],
       output: {
+        exports: 'named',
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',

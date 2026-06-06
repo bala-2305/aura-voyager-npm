@@ -97,29 +97,100 @@ export default function MyComponent() {
 ### Using the Popup Widget
 
 ```tsx
-import { useState } from 'react';
 import { AuraPopup } from 'aura-voyager';
 
 export default function App() {
-  const [showChat, setShowChat] = useState(false);
-
   return (
-    <>
-      <button onClick={() => setShowChat(true)}>Chat</button>
-
-      {showChat && (
-        <AuraPopup
-          apiKey="sk-your-api-key"
-          theme="dark"
-          position="bottom-right"
-          onClose={() => setShowChat(false)}
-        />
-      )}
-    </>
+    <div className="app">
+      <h1>My Site</h1>
+      <AuraPopup 
+        apiKey="sk-..."
+        provider="openai"
+        title="AI Assistant"
+        position="bottom-right"
+      />
+    </div>
   );
 }
 ```
-*Explanation*: The `<AuraPopup />` widget provides a floating, persistent chat icon that toggles standard chat functionalities. It incorporates the exact same attributes as the `AuraChat` component but confines the UI styling to an absolutely positioned overlay container.
+
+## Integration with Non-React Applications
+
+Aura Voyager provides a helper function to easily integrate the chat component into any web application (Vanilla JS, Vue, Svelte, etc.) using a simple mounting function.
+
+### Standard Installation
+
+1. Install the package:
+   ```bash
+   npm install aura-voyager
+   ```
+
+2. Mount the chat:
+   ```javascript
+   import { mountAuraChat } from 'aura-voyager';
+   import 'aura-voyager/style.css';
+
+   const chat = mountAuraChat('chat-container', {
+     config: {
+       apiKey: 'sk-your-api-key',
+       provider: 'openai'
+     },
+     theme: 'dark',
+     title: 'Aura Support'
+   });
+
+   // To cleanup later
+   // chat.unmount();
+   ```
+
+### CDN / HTML Script Tag
+
+You can also use Aura Voyager directly in your HTML without a build step.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/aura-voyager/dist/style.css">
+</head>
+<body>
+    <div id="chat-root" style="height: 600px; width: 400px;"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/aura-voyager/dist/index.umd.js"></script>
+
+    <script>
+        const { mountAuraChat } = AuraVoyager;
+        
+        mountAuraChat('chat-root', {
+            config: {
+                apiKey: 'your-api-key',
+                provider: 'openai'
+            },
+            theme: 'light',
+            title: 'CDN Chat'
+        });
+    </script>
+</body>
+</html>
+```
+
+## Advanced Usage
+
+### Using an Existing Agent Instance
+
+If you want to control the `AuraVoyager` instance outside of the UI:
+
+```tsx
+import { AuraVoyager, AuraChat } from 'aura-voyager';
+
+const agent = new AuraVoyager({ apiKey: '...' });
+
+function App() {
+  return <AuraChat agent={agent} />;
+}
+```
 
 ### Collecting User Feedback
 
@@ -221,18 +292,21 @@ Use `apiKey="mock"` to test local workflows without an external API key or inter
 
 ```typescript
 interface AuraChatProps {
-  // Required
-  apiKey: string;
+  // Pass either apiKey (to auto-create agent) or agent (to use existing instance)
+  agent?: AuraVoyager;               // Pre-configured agent instance
+  apiKey?: string;                   // API key for auto-created agent
 
   // Optional
-  provider?: 'openai' | 'nvidia' | 'custom'; // AI Provider (default: 'openai')
+  provider?: 'openai' | 'anthropic' | 'gemini' | 'groq' | 'cohere' | 'nvidia' | 'custom' | 'mock'; // AI Provider
   apiEndpoint?: string;              // Custom API endpoint override
   model?: string;                    // AI model override
   systemPrompt?: string;             // Custom system prompt configuration
   theme?: 'light' | 'dark';          // UI theme (default: 'light')
   placeholder?: string;              // Input placeholder text
+  title?: string;                    // Chat header title
   showTypingAnimation?: boolean;      // Show typing animation indicator
   onMessageSent?: (msg: string) => void; // Callback hook when message sent
+  onError?: (error: Error) => void;  // Callback hook when error occurs
 }
 ```
 *Explanation*: The `AuraChatProps` Typescript schema describes all officially supported attributes assignable to the component. Properties handle everything from API overriding to cosmetic adjustments (such as placeholder wording and themes).
@@ -280,12 +354,24 @@ const {
   loading,            // Boolean - request in progress
   error,              // Error object or null
   sendMessage,        // (msg: string) => Promise<void>
+  stopGeneration,     // () => void — aborts streaming response
   clearMessages,      // () => void
   setContext,         // (ctx: string) => void
-  setMemory           // (enabled: boolean) => void
+  setMemory,          // (enabled: boolean) => void
+  agent               // AuraVoyager | null — underlying agent instance
 } = useAuraVoyager(options);
 ```
-*Explanation*: Destructuring the `useAuraVoyager` return map yields direct access to the stateful arrays evaluating user interaction logic alongside the fundamental transmission triggers like `sendMessage` and `setContext`.
+
+The hook accepts either an `apiKey` (to auto-create an agent) or a pre-configured `agent` instance:
+
+```typescript
+// Option 1: Auto-create agent from config
+const { sendMessage } = useAuraVoyager({ apiKey: 'sk-...', provider: 'openai' });
+
+// Option 2: Pass existing agent instance
+const agent = new AuraVoyager({ apiKey: 'sk-...' });
+const { sendMessage } = useAuraVoyager({ agent });
+```
 
 ## Types
 
@@ -301,10 +387,26 @@ import type {
   AuraChatProps,        // Chat component properties
   AuraPopupProps,       // Popup component properties
   AuraFeedbackProps,    // Feedback component properties
-  FeedbackSubmission    // Feedback submission structure
+  FeedbackSubmission,   // Feedback submission structure
+  MountAuraChatOptions  // Non-React mount options
 } from 'aura-voyager';
 ```
 *Explanation*: Importable TypeScript interfaces allow type-safe validation enforcing standard shapes. Enforcing strict schema guidelines ensures reliable API interaction mappings over unpredictable request objects.
+
+### mountAuraChat
+
+Mounts the AuraChat component into any DOM element, enabling integration with non-React applications (Vanilla JS, Vue, Svelte, etc.).
+
+```typescript
+interface MountAuraChatOptions {
+  config: AuraVoyagerConfig;  // Agent configuration
+  theme?: 'light' | 'dark';
+  title?: string;
+  placeholder?: string;
+}
+
+const { unmount, agent } = mountAuraChat(containerId: string, options: MountAuraChatOptions);
+```
 
 ## Error Handling
 

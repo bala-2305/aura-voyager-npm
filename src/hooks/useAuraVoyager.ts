@@ -7,7 +7,8 @@ import { AuraVoyagerError } from '../utils/errors';
  * Hook configuration options
  */
 export interface UseAuraVoyagerOptions {
-  apiKey: string;
+  agent?: AuraVoyager;
+  apiKey?: string;
   provider?: 'openai' | 'anthropic' | 'gemini' | 'groq' | 'cohere' | 'nvidia' | 'custom' | 'mock';
   apiEndpoint?: string;
   model?: string;
@@ -28,6 +29,7 @@ export interface UseAuraVoyagerReturn {
   clearMessages: () => void;
   setContext: (context: string) => void;
   setMemory: (enabled: boolean) => void;
+  agent: AuraVoyager | null;
 }
 
 /**
@@ -38,20 +40,34 @@ export function useAuraVoyager(options: UseAuraVoyagerOptions): UseAuraVoyagerRe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Stable ref — never triggers re-initialization on parent re-renders
-  const agentRef = useRef<AuraVoyager | null>(null);
+  // Use the provided agent or create a new one
+  const agentRef = useRef<AuraVoyager | null>(options.agent || null);
 
   // Track a stable key for when the agent truly needs to be replaced
-  const configKey = `${options.apiKey}::${options.provider}::${options.apiEndpoint}::${options.model}::${options.storageKey}`;
+  const configKey = options.agent 
+    ? 'provided-agent'
+    : `${options.apiKey}::${options.provider}::${options.apiEndpoint}::${options.model}::${options.storageKey}`;
+  
   const prevKeyRef = useRef<string>('');
 
   useEffect(() => {
+    if (options.agent) {
+      agentRef.current = options.agent;
+      setMessages(options.agent.getMessages());
+      return;
+    }
+
     if (prevKeyRef.current === configKey && agentRef.current) return;
     prevKeyRef.current = configKey;
 
+    if (!options.apiKey && !options.agent) {
+      setError(new Error('API key or agent instance is required'));
+      return;
+    }
+
     try {
       agentRef.current = new AuraVoyager({
-        apiKey: options.apiKey,
+        apiKey: options.apiKey!,
         provider: options.provider,
         apiEndpoint: options.apiEndpoint,
         model: options.model,
@@ -69,7 +85,7 @@ export function useAuraVoyager(options: UseAuraVoyagerOptions): UseAuraVoyagerRe
     }
   // Only reinitialize when the identity-defining config changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configKey]);
+  }, [configKey, options.agent]);
 
   // Keep systemPrompt updated without reinitializing the agent
   useEffect(() => {
@@ -169,6 +185,7 @@ export function useAuraVoyager(options: UseAuraVoyagerOptions): UseAuraVoyagerRe
     stopGeneration,
     clearMessages,
     setContext: setContextFn,
-    setMemory: setMemoryFn
+    setMemory: setMemoryFn,
+    agent: agentRef.current
   };
 }

@@ -30,3 +30,13 @@ export type { AuraFeedbackProps, FeedbackSubmission } from './components/AuraFee
 // Utility exports
 export { AuraVoyagerError, ErrorCodes, getErrorMessage } from './utils/errors';
 export type { ErrorCodes as ErrorCodesType } from './utils/errors';
+
+// Integration helpers
+export { mountAuraChat } from './integrations/index';
+export type { MountAuraChatOptions } from './integrations/index';
+
+// Default export
+import { AuraVoyager } from './core/AuraVoyager';
+export default AuraVoyager;
+
+
